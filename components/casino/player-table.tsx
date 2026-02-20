@@ -235,9 +235,9 @@ export function PlayerTable({ players, onSubmitRound, onRemovePlayer, rake }: Pl
             <Users className="size-8 text-muted-foreground" />
           </div>
           <div className="text-center">
-            <p className="text-foreground font-medium">No players yet</p>
+            <p className="text-foreground font-medium">Wala pa players chief! </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Add players above to start tracking
+              Add mo na yung mga lulong
             </p>
           </div>
         </CardContent>

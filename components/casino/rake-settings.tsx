@@ -20,8 +20,8 @@ export function RakeSettings({ rake, onRakeChange, totalRakeCollected }: RakeSet
             <Percent className="size-4 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-foreground">Rake Settings</CardTitle>
-            <CardDescription>Applied only when a player wins</CardDescription>
+            <CardTitle className="text-foreground">Rake </CardTitle>
+            <CardDescription>Game buraotin mo na chief! </CardDescription>
           </div>
         </div>
       </CardHeader>
