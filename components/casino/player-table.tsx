@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -65,6 +65,9 @@ function PlayerRow({
   const [wager, setWager] = useState("")
   const [winnings, setWinnings] = useState("")
 
+  const wagerRef = useRef<HTMLInputElement | null>(null)
+  const winningsRef = useRef<HTMLInputElement | null>(null)
+
   const handleSubmit = () => {
     const w = parseFloat(wager) || 0
     const win = parseFloat(winnings) || 0
@@ -72,28 +75,43 @@ function PlayerRow({
     onSubmitRound(player.id, w, win)
     setWager("")
     setWinnings("")
+    wagerRef.current?.focus()
   }
 
   const hasInput = (parseFloat(wager) || 0) > 0 || (parseFloat(winnings) || 0) > 0
+
+  // ✅ Preview matches new rake logic: rake only on PROFIT (winnings - wager) > 0
   const previewWin = parseFloat(winnings) || 0
   const previewWager = parseFloat(wager) || 0
-  const previewRakeDeduction = previewWin > 0 ? (previewWin * rake) / 100 : 0
-  const previewRoundNet = previewWin - previewWager - previewRakeDeduction
+  const profitBeforeRake = previewWin - previewWager
+  const previewRakeDeduction = profitBeforeRake > 0 ? (profitBeforeRake * rake) / 100 : 0
+  const previewRoundNet = profitBeforeRake - previewRakeDeduction
   const previewTotalNet = player.net + previewRoundNet
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.nativeEvent?.isComposing) return
+  // ✅ Disable wheel changing number inputs
+  const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    e.currentTarget.blur()
+  }
 
+  // ✅ Enter behavior:
+  // - Enter on wager -> focus winnings
+  // - Enter on winnings -> submit
+  const handleWagerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.nativeEvent as any)?.isComposing) return
+    if (e.key === "Enter") {
+      e.preventDefault()
+      winningsRef.current?.focus()
+    }
+  }
+
+  const handleWinningsKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.nativeEvent as any)?.isComposing) return
     if (e.key === "Enter") {
       e.preventDefault()
       if (!hasInput) return
       handleSubmit()
     }
   }
-
-  const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
-    e.currentTarget.blur()
-}
 
   return (
     <div className="group rounded-xl bg-secondary/30 border border-border hover:border-primary/30 transition-colors">
@@ -107,7 +125,7 @@ function PlayerRow({
             <span className="font-medium text-foreground truncate">{player.name}</span>
             {hasInput && (
               <span className="text-[10px] text-muted-foreground">
-                {'Round: '}
+                {"Round: "}
                 <span className={previewRoundNet >= 0 ? "text-success" : "text-loss"}>
                   {previewRoundNet >= 0 ? "+" : ""}
                   {previewRoundNet.toFixed(2)}
@@ -123,13 +141,15 @@ function PlayerRow({
             )}
           </div>
         </div>
+
         <Input
+          ref={wagerRef}
           type="number"
           min={0}
           step={0.01}
           value={wager}
           onChange={(e) => setWager(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={handleWagerKeyDown}
           onWheel={handleWheel}
           placeholder="0.00"
           className="h-9 bg-background border-border text-foreground font-mono text-sm"
@@ -137,20 +157,23 @@ function PlayerRow({
         />
 
         <Input
+          ref={winningsRef}
           type="number"
           min={0}
           step={0.01}
           value={winnings}
           onChange={(e) => setWinnings(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={handleWinningsKeyDown}
           onWheel={handleWheel}
           placeholder="0.00"
           className="h-9 bg-background border-border text-foreground font-mono text-sm"
           aria-label={`Winnings for ${player.name}`}
         />
+
         <div className="flex justify-center">
           <NetBadge net={hasInput ? previewTotalNet : player.net} />
         </div>
+
         <Button
           variant="ghost"
           size="icon"
@@ -161,6 +184,7 @@ function PlayerRow({
         >
           <Check className="size-4" />
         </Button>
+
         <Button
           variant="ghost"
           size="icon"
@@ -194,31 +218,35 @@ function PlayerRow({
             </Button>
           </div>
         </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">{'Wager (₱)'}</label>
+            <label className="text-xs text-muted-foreground">{"Wager (₱)"}</label>
             <Input
+              ref={wagerRef}
               type="number"
               min={0}
               step={0.01}
               value={wager}
               onChange={(e) => setWager(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={handleWagerKeyDown}
               onWheel={handleWheel}
               placeholder="0.00"
               className="h-9 bg-background border-border text-foreground font-mono text-sm"
               aria-label={`Wager for ${player.name}`}
             />
           </div>
+
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">{'Winnings (₱)'}</label>
+            <label className="text-xs text-muted-foreground">{"Winnings (₱)"}</label>
             <Input
+              ref={winningsRef}
               type="number"
               min={0}
               step={0.01}
               value={winnings}
               onChange={(e) => setWinnings(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={handleWinningsKeyDown}
               onWheel={handleWheel}
               placeholder="0.00"
               className="h-9 bg-background border-border text-foreground font-mono text-sm"
@@ -226,10 +254,11 @@ function PlayerRow({
             />
           </div>
         </div>
+
         {hasInput && (
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <span>
-              {'Round: '}
+              {"Round: "}
               <span className={previewRoundNet >= 0 ? "text-success" : "text-loss"}>
                 {previewRoundNet >= 0 ? "+" : ""}
                 {"₱"}
@@ -237,14 +266,15 @@ function PlayerRow({
               </span>
               {previewRakeDeduction > 0 && (
                 <span className="text-primary/60 ml-1">
-                  {'(rake: ₱'}
+                  {"(rake: ₱"}
                   {previewRakeDeduction.toFixed(2)}
-                  {')'}
+                  {")"}
                 </span>
               )}
             </span>
           </div>
         )}
+
         <Button
           onClick={handleSubmit}
           disabled={!hasInput}
@@ -291,12 +321,13 @@ export function PlayerTable({ players, onSubmitRound, onRemovePlayer, rake }: Pl
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="flex flex-col gap-3 px-4 md:px-6">
         {/* Desktop Header */}
         <div className="hidden md:grid md:grid-cols-[1fr_120px_120px_120px_36px_36px] gap-3 items-center px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
           <span>Player</span>
-          <span>{'Wager (₱)'}</span>
-          <span>{'Winnings (₱)'}</span>
+          <span>{"Wager (₱)"}</span>
+          <span>{"Winnings (₱)"}</span>
           <span className="text-center">Net</span>
           <span></span>
           <span></span>
