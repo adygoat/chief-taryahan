@@ -91,6 +91,10 @@ function PlayerRow({
     }
   }
 
+  const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    e.currentTarget.blur()
+}
+
   return (
     <div className="group rounded-xl bg-secondary/30 border border-border hover:border-primary/30 transition-colors">
       {/* Desktop Row */}
@@ -126,6 +130,7 @@ function PlayerRow({
           value={wager}
           onChange={(e) => setWager(e.target.value)}
           onKeyDown={handleKeyDown}
+          onWheel={handleWheel}
           placeholder="0.00"
           className="h-9 bg-background border-border text-foreground font-mono text-sm"
           aria-label={`Wager for ${player.name}`}
@@ -138,6 +143,7 @@ function PlayerRow({
           value={winnings}
           onChange={(e) => setWinnings(e.target.value)}
           onKeyDown={handleKeyDown}
+          onWheel={handleWheel}
           placeholder="0.00"
           className="h-9 bg-background border-border text-foreground font-mono text-sm"
           aria-label={`Winnings for ${player.name}`}
@@ -198,6 +204,7 @@ function PlayerRow({
               value={wager}
               onChange={(e) => setWager(e.target.value)}
               onKeyDown={handleKeyDown}
+              onWheel={handleWheel}
               placeholder="0.00"
               className="h-9 bg-background border-border text-foreground font-mono text-sm"
               aria-label={`Wager for ${player.name}`}
@@ -212,6 +219,7 @@ function PlayerRow({
               value={winnings}
               onChange={(e) => setWinnings(e.target.value)}
               onKeyDown={handleKeyDown}
+              onWheel={handleWheel}
               placeholder="0.00"
               className="h-9 bg-background border-border text-foreground font-mono text-sm"
               aria-label={`Winnings for ${player.name}`}
