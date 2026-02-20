@@ -15,6 +15,12 @@ export interface Player {
   totalRakeCollected: number
   totalWager: number
   totalWinnings: number
+
+  /**
+   * ✅ Tracks how much the player is "down" overall.
+   * Rake only applies once the player clears this and is truly in profit.
+   */
+  carryLoss: number
 }
 
 interface PlayerTableProps {
@@ -80,12 +86,18 @@ function PlayerRow({
 
   const hasInput = (parseFloat(wager) || 0) > 0 || (parseFloat(winnings) || 0) > 0
 
-  // ✅ Preview matches new rake logic: rake only on PROFIT (winnings - wager) > 0
+  // ✅ Preview logic that matches "breakeven across rounds => no rake"
   const previewWin = parseFloat(winnings) || 0
   const previewWager = parseFloat(wager) || 0
-  const profitBeforeRake = previewWin - previewWager
-  const previewRakeDeduction = profitBeforeRake > 0 ? (profitBeforeRake * rake) / 100 : 0
-  const previewRoundNet = profitBeforeRake - previewRakeDeduction
+  const previewRoundNetBeforeRake = previewWin - previewWager
+
+  // Profit that counts for rake only starts after clearing prior losses
+  const previewProfitEligibleForRake = Math.max(0, previewRoundNetBeforeRake - player.carryLoss)
+
+  const previewRakeDeduction =
+    previewProfitEligibleForRake > 0 ? (previewProfitEligibleForRake * rake) / 100 : 0
+
+  const previewRoundNet = previewRoundNetBeforeRake - previewRakeDeduction
   const previewTotalNet = player.net + previewRoundNet
 
   // ✅ Disable wheel changing number inputs
@@ -123,6 +135,7 @@ function PlayerRow({
           </div>
           <div className="flex flex-col min-w-0">
             <span className="font-medium text-foreground truncate">{player.name}</span>
+
             {hasInput && (
               <span className="text-[10px] text-muted-foreground">
                 {"Round: "}
@@ -130,10 +143,19 @@ function PlayerRow({
                   {previewRoundNet >= 0 ? "+" : ""}
                   {previewRoundNet.toFixed(2)}
                 </span>
+
                 {previewRakeDeduction > 0 && (
                   <span className="text-primary/60 ml-1">
                     {"(rake: ₱"}
                     {previewRakeDeduction.toFixed(2)}
+                    {")"}
+                  </span>
+                )}
+
+                {player.carryLoss > 0 && (
+                  <span className="ml-1 text-muted-foreground/70">
+                    {"(carry: ₱"}
+                    {player.carryLoss.toFixed(0)}
                     {")"}
                   </span>
                 )}
@@ -205,6 +227,7 @@ function PlayerRow({
             </div>
             <span className="font-medium text-foreground">{player.name}</span>
           </div>
+
           <div className="flex items-center gap-2">
             <NetBadge net={hasInput ? previewTotalNet : player.net} />
             <Button
@@ -264,6 +287,7 @@ function PlayerRow({
                 {"₱"}
                 {previewRoundNet.toFixed(2)}
               </span>
+
               {previewRakeDeduction > 0 && (
                 <span className="text-primary/60 ml-1">
                   {"(rake: ₱"}
