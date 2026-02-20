@@ -114,7 +114,7 @@ export default function CasinoPage() {
         </div>
 
         <footer className="mt-12 text-center">
-          <p className="text-xs text-muted-foreground">Taryahan ni Chief &middot; Wala kang patawad ya</p>
+          <p className="text-xs text-muted-foreground">kick.com/armeldoto &middot; Use code CHIEF</p>
         </footer>
       </div>
     </main>
