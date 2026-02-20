@@ -28,27 +28,28 @@ export default function CasinoPage() {
   }, [])
 
   const submitRound = useCallback(
-    (id: string, wager: number, winnings: number) => {
-      setPlayers((prev) =>
-        prev.map((p) => {
-          if (p.id !== id) return p
-          // Rake is only deducted when the player wins
-          const rakeDeduction = winnings > 0 ? (winnings * rake) / 100 : 0
-          const roundNet = winnings - wager - rakeDeduction
-          return {
-            ...p,
-            wager: 0,
-            winnings: 0,
-            net: p.net + roundNet,
-            totalRakeCollected: p.totalRakeCollected + rakeDeduction,
-            totalWager: p.totalWager + wager,
-            totalWinnings: p.totalWinnings + winnings,
-          }
-        })
-      )
-    },
-    [rake]
-  )
+  (id: string, wager: number, winnings: number) => {
+    setPlayers((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p
+        const profitBeforeRake = winnings - wager
+        const rakeDeduction = profitBeforeRake > 0 ? (profitBeforeRake * rake) / 100 : 0
+        const roundNet = profitBeforeRake - rakeDeduction
+
+        return {
+          ...p,
+          wager: 0,
+          winnings: 0,
+          net: p.net + roundNet,
+          totalRakeCollected: p.totalRakeCollected + rakeDeduction,
+          totalWager: p.totalWager + wager,
+          totalWinnings: p.totalWinnings + winnings,
+        }
+      })
+    )
+  },
+  [rake]
+)
 
   const removePlayer = useCallback((id: string) => {
     setPlayers((prev) => prev.filter((p) => p.id !== id))
