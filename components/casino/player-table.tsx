@@ -29,7 +29,8 @@ function NetBadge({ net }: { net: number }) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success">
         <TrendingUp className="size-3" />
-        +{'₱'}{net.toFixed(2)}
+        +{"₱"}
+        {net.toFixed(2)}
       </span>
     )
   }
@@ -37,14 +38,15 @@ function NetBadge({ net }: { net: number }) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-loss/15 px-2.5 py-0.5 text-xs font-semibold text-loss">
         <TrendingDown className="size-3" />
-        -{'₱'}{Math.abs(net).toFixed(2)}
+        -{"₱"}
+        {Math.abs(net).toFixed(2)}
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
       <Minus className="size-3" />
-      {'₱'}0.00
+      {"₱"}0.00
     </span>
   )
 }
@@ -79,6 +81,16 @@ function PlayerRow({
   const previewRoundNet = previewWin - previewWager - previewRakeDeduction
   const previewTotalNet = player.net + previewRoundNet
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent?.isComposing) return
+
+    if (e.key === "Enter") {
+      e.preventDefault()
+      if (!hasInput) return
+      handleSubmit()
+    }
+  }
+
   return (
     <div className="group rounded-xl bg-secondary/30 border border-border hover:border-primary/30 transition-colors">
       {/* Desktop Row */}
@@ -93,11 +105,14 @@ function PlayerRow({
               <span className="text-[10px] text-muted-foreground">
                 {'Round: '}
                 <span className={previewRoundNet >= 0 ? "text-success" : "text-loss"}>
-                  {previewRoundNet >= 0 ? "+" : ""}{previewRoundNet.toFixed(2)}
+                  {previewRoundNet >= 0 ? "+" : ""}
+                  {previewRoundNet.toFixed(2)}
                 </span>
                 {previewRakeDeduction > 0 && (
                   <span className="text-primary/60 ml-1">
-                    {'(rake: ₱'}{previewRakeDeduction.toFixed(2)}{')'}
+                    {"(rake: ₱"}
+                    {previewRakeDeduction.toFixed(2)}
+                    {")"}
                   </span>
                 )}
               </span>
@@ -110,16 +125,19 @@ function PlayerRow({
           step={0.01}
           value={wager}
           onChange={(e) => setWager(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="0.00"
           className="h-9 bg-background border-border text-foreground font-mono text-sm"
           aria-label={`Wager for ${player.name}`}
         />
+
         <Input
           type="number"
           min={0}
           step={0.01}
           value={winnings}
           onChange={(e) => setWinnings(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="0.00"
           className="h-9 bg-background border-border text-foreground font-mono text-sm"
           aria-label={`Winnings for ${player.name}`}
@@ -179,6 +197,7 @@ function PlayerRow({
               step={0.01}
               value={wager}
               onChange={(e) => setWager(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="0.00"
               className="h-9 bg-background border-border text-foreground font-mono text-sm"
               aria-label={`Wager for ${player.name}`}
@@ -192,6 +211,7 @@ function PlayerRow({
               step={0.01}
               value={winnings}
               onChange={(e) => setWinnings(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="0.00"
               className="h-9 bg-background border-border text-foreground font-mono text-sm"
               aria-label={`Winnings for ${player.name}`}
@@ -203,11 +223,15 @@ function PlayerRow({
             <span>
               {'Round: '}
               <span className={previewRoundNet >= 0 ? "text-success" : "text-loss"}>
-                {previewRoundNet >= 0 ? "+" : ""}{'₱'}{previewRoundNet.toFixed(2)}
+                {previewRoundNet >= 0 ? "+" : ""}
+                {"₱"}
+                {previewRoundNet.toFixed(2)}
               </span>
               {previewRakeDeduction > 0 && (
                 <span className="text-primary/60 ml-1">
-                  {'(rake: ₱'}{previewRakeDeduction.toFixed(2)}{')'}
+                  {'(rake: ₱'}
+                  {previewRakeDeduction.toFixed(2)}
+                  {')'}
                 </span>
               )}
             </span>
@@ -236,9 +260,7 @@ export function PlayerTable({ players, onSubmitRound, onRemovePlayer, rake }: Pl
           </div>
           <div className="text-center">
             <p className="text-foreground font-medium">Wala pa players chief! </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add mo na yung mga lulong
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Add mo na yung mga lulong</p>
           </div>
         </CardContent>
       </Card>
@@ -255,9 +277,7 @@ export function PlayerTable({ players, onSubmitRound, onRemovePlayer, rake }: Pl
           <div>
             <CardTitle className="text-foreground">
               Players
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({players.length})
-              </span>
+              <span className="ml-2 text-sm font-normal text-muted-foreground">({players.length})</span>
             </CardTitle>
             <CardDescription>Enter wagers and winnings per round, then submit</CardDescription>
           </div>
