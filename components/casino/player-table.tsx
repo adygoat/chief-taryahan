@@ -15,11 +15,6 @@ export interface Player {
   totalRakeCollected: number
   totalWager: number
   totalWinnings: number
-
-  /**
-   * ✅ Tracks how much the player is "down" overall.
-   * Rake only applies once the player clears this and is truly in profit.
-   */
   carryLoss: number
 }
 
