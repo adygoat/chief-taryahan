@@ -233,7 +233,7 @@ export default function CasinoPage() {
 
       const res = await fetch(`/api/sessionplayers/${id}`, {
         method: "DELETE",
-        headers: userHeader,
+        headers: { "x-user-id": userId },
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
