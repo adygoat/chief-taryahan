@@ -24,7 +24,7 @@ export async function POST(
     return NextResponse.json({ error: "Player name is required" }, { status: 400 })
   }
 
-  // 🔐 Make sure the session belongs to this user
+  // 🔐 Verify session belongs to this user
   const owner = await sql`
     select id
     from sessions
@@ -37,10 +37,10 @@ export async function POST(
     return NextResponse.json({ error: "Session not found" }, { status: 404 })
   }
 
-  // ✅ Insert player into that session
+  // ✅ Insert player WITH user_id
   const { rows } = await sql`
-    insert into session_players (session_id, player_name)
-    values (${sessionid}, ${playerName})
+    insert into session_players (session_id, user_id, player_name)
+    values (${sessionid}, ${userId}, ${playerName})
     on conflict (session_id, player_name)
     do update set player_name = excluded.player_name
     returning
