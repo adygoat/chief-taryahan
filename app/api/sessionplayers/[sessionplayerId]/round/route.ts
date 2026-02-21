@@ -7,6 +7,11 @@ export async function POST(
 ) {
   const { sessionplayerId } = await ctx.params
 
+  const userId = req.headers.get("x-user-id")
+  if (!userId) {
+    return NextResponse.json({ error: "Missing user id" }, { status: 401 })
+  }
+
   let body: any
   try {
     body = await req.json()
@@ -24,6 +29,7 @@ export async function POST(
       { status: 400 }
     )
   }
+
   if (wager < 0 || winnings < 0 || rakePercent < 0) {
     return NextResponse.json(
       { error: "wager/winnings/rakePercent cannot be negative" },
@@ -31,11 +37,13 @@ export async function POST(
     )
   }
 
-  // 1) Load current carry_loss (and ensure player exists)
+  // 🔐 Ensure this player belongs to a session owned by this user
   const current = await sql`
-    select carry_loss
-    from session_players
-    where id = ${sessionplayerId}
+    select sp.carry_loss
+    from session_players sp
+    join sessions s on s.id = sp.session_id
+    where sp.id = ${sessionplayerId}
+      and s.user_id = ${userId}
     limit 1
   `
 
@@ -45,19 +53,19 @@ export async function POST(
 
   const carryLoss = Number(current.rows[0].carry_loss) || 0
 
-  // 2) Compute round values
+  // === Calculation ===
+
   const roundNetBeforeRake = winnings - wager
 
-  // Rake only applies to profit AFTER clearing previous losses
   const profitEligibleForRake = Math.max(0, roundNetBeforeRake - carryLoss)
+
   const rakeDeduction =
-    profitEligibleForRake > 0 ? (profitEligibleForRake * rakePercent) / 100 : 0
+    profitEligibleForRake > 0
+      ? (profitEligibleForRake * rakePercent) / 100
+      : 0
 
   const roundNet = roundNetBeforeRake - rakeDeduction
 
-  // 3) Update carryLoss:
-  // - If loss this round, add to carryLoss
-  // - If win, reduce carryLoss until it reaches 0 (breakeven => 0)
   let newCarryLoss = carryLoss
   if (roundNetBeforeRake < 0) {
     newCarryLoss += Math.abs(roundNetBeforeRake)
@@ -65,24 +73,26 @@ export async function POST(
     newCarryLoss = Math.max(0, newCarryLoss - roundNetBeforeRake)
   }
 
-  // 4) Persist totals + return updated row in camelCase keys
   const updated = await sql`
-    update session_players
+    update session_players sp
     set
       total_wager = total_wager + ${wager},
       total_winnings = total_winnings + ${winnings},
       net = net + ${roundNet},
       total_rake_collected = total_rake_collected + ${rakeDeduction},
       carry_loss = ${newCarryLoss}
-    where id = ${sessionplayerId}
+    from sessions s
+    where sp.id = ${sessionplayerId}
+      and s.id = sp.session_id
+      and s.user_id = ${userId}
     returning
-      id,
-      player_name as "name",
-      total_wager as "totalWager",
-      total_winnings as "totalWinnings",
-      net,
-      total_rake_collected as "totalRakeCollected",
-      carry_loss as "carryLoss"
+      sp.id,
+      sp.player_name as "name",
+      sp.total_wager as "totalWager",
+      sp.total_winnings as "totalWinnings",
+      sp.net,
+      sp.total_rake_collected as "totalRakeCollected",
+      sp.carry_loss as "carryLoss"
   `
 
   return NextResponse.json(updated.rows[0])

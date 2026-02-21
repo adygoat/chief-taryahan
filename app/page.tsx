@@ -15,6 +15,16 @@ type Session = {
   createdAt: string
 }
 
+function getOrCreateUserId() {
+  const key = "casino_user_id"
+  let id = localStorage.getItem(key)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(key, id)
+  }
+  return id
+}
+
 export default function CasinoPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [sessionId, setSessionId] = useState("")
@@ -22,21 +32,41 @@ export default function CasinoPage() {
   const [players, setPlayers] = useState<Player[]>([])
   const [rake, setRake] = useState(5)
 
+  // ✅ userId per browser (host has their own; viewers have their own)
+  const [userId] = useState(() => {
+    if (typeof window === "undefined") return ""
+    return getOrCreateUserId()
+  })
+
+  // ✅ headers helpers
+  const userHeader = useMemo(() => ({ "x-user-id": userId }), [userId])
+  const userJsonHeader = useMemo(
+    () => ({ "x-user-id": userId, "Content-Type": "application/json" }),
+    [userId]
+  )
+
   // Load sessions list on mount
   useEffect(() => {
+    if (!userId) return
+
     ;(async () => {
-      const res = await fetch("/api/sessions", { cache: "no-store" })
+      const res = await fetch("/api/sessions", {
+        cache: "no-store",
+        headers: userHeader,
+      })
       const data = (await res.json()) as Session[]
       setSessions(Array.isArray(data) ? data : [])
 
-      // restore last selected session
+      // restore last selected session (per browser)
       const saved = localStorage.getItem("casino_session_id")
       if (saved) setSessionId(saved)
     })()
-  }, [])
+  }, [userId, userHeader])
 
   // Load selected session data
   useEffect(() => {
+    if (!userId) return
+
     if (!sessionId) {
       setPlayers([])
       return
@@ -45,7 +75,10 @@ export default function CasinoPage() {
     localStorage.setItem("casino_session_id", sessionId)
 
     ;(async () => {
-      const res = await fetch(`/api/sessions/${sessionId}`, { cache: "no-store" })
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        cache: "no-store",
+        headers: userHeader,
+      })
       const data = await res.json()
 
       const mapped: Player[] = (data.players ?? []).map((p: any) => ({
@@ -62,15 +95,16 @@ export default function CasinoPage() {
 
       setPlayers(mapped)
     })()
-  }, [sessionId])
+  }, [sessionId, userId, userHeader])
 
   const createSession = useCallback(async () => {
     const name = sessionName.trim()
     if (!name) return
+    if (!userId) return
 
     const res = await fetch("/api/sessions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: userJsonHeader,
       body: JSON.stringify({ name }),
     })
 
@@ -84,14 +118,20 @@ export default function CasinoPage() {
     setSessions((prev) => [created, ...prev])
     setSessionName("")
     setSessionId(created.id)
-  }, [sessionName])
+  }, [sessionName, userId, userJsonHeader])
 
   const deleteSession = useCallback(async () => {
     if (!sessionId) return
+    if (!userId) return
+
     const ok = confirm("Delete this session? This will remove all players and totals for it.")
     if (!ok) return
 
-    const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
+    const res = await fetch(`/api/sessions/${sessionId}`, {
+      method: "DELETE",
+      headers: userHeader,
+    })
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       alert(err?.error ?? "Failed to delete session")
@@ -102,7 +142,7 @@ export default function CasinoPage() {
     setSessionId("")
     setPlayers([])
     localStorage.removeItem("casino_session_id")
-  }, [sessionId])
+  }, [sessionId, userId, userHeader])
 
   const addPlayer = useCallback(
     async (name: string) => {
@@ -110,10 +150,11 @@ export default function CasinoPage() {
         alert("Select or create a session first.")
         return
       }
+      if (!userId) return
 
       const res = await fetch(`/api/sessions/${sessionId}/players`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: userJsonHeader,
         body: JSON.stringify({ playerName: name }),
       })
 
@@ -142,15 +183,16 @@ export default function CasinoPage() {
         return [...prev, newPlayer]
       })
     },
-    [sessionId]
+    [sessionId, userId, userJsonHeader]
   )
 
   const submitRound = useCallback(
     async (id: string, wager: number, winnings: number) => {
-      // id = session_players.id
+      if (!userId) return
+
       const res = await fetch(`/api/sessionplayers/${id}/round`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: userJsonHeader,
         body: JSON.stringify({ wager, winnings, rakePercent: rake }),
       })
 
@@ -179,25 +221,32 @@ export default function CasinoPage() {
         )
       )
     },
-    [rake]
+    [rake, userId, userJsonHeader]
   )
 
-  const removePlayer = useCallback(async (id: string) => {
-    const ok = confirm("Remove this player from the session?")
-    if (!ok) return
+  const removePlayer = useCallback(
+    async (id: string) => {
+      if (!userId) return
 
-    const res = await fetch(`/api/sessionplayers/${id}`, { method: "DELETE" })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      alert(err?.error ?? "Failed to remove player")
-      return
-    }
+      const ok = confirm("Remove this player from the session?")
+      if (!ok) return
 
-    setPlayers((prev) => prev.filter((p) => p.id !== id))
-  }, [])
+      const res = await fetch(`/api/sessionplayers/${id}`, {
+        method: "DELETE",
+        headers: userHeader,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err?.error ?? "Failed to remove player")
+        return
+      }
+
+      setPlayers((prev) => prev.filter((p) => p.id !== id))
+    },
+    [userId, userHeader]
+  )
 
   const resetLocalOnly = useCallback(() => {
-    // local-only reset; does NOT delete DB session
     setPlayers([])
     setRake(5)
   }, [])
@@ -206,7 +255,10 @@ export default function CasinoPage() {
     () => players.reduce((sum, p) => sum + (p.totalRakeCollected || 0), 0),
     [players]
   )
-  const grandTotalWager = useMemo(() => players.reduce((sum, p) => sum + (p.totalWager || 0), 0), [players])
+  const grandTotalWager = useMemo(
+    () => players.reduce((sum, p) => sum + (p.totalWager || 0), 0),
+    [players]
+  )
   const grandTotalWinnings = useMemo(
     () => players.reduce((sum, p) => sum + (p.totalWinnings || 0), 0),
     [players]
@@ -264,9 +316,7 @@ export default function CasinoPage() {
           </div>
 
           {!sessionId && (
-            <p className="text-xs text-muted-foreground">
-             Gawa ka session chief!
-            </p>
+            <p className="text-xs text-muted-foreground">Gawa ka session chief!</p>
           )}
         </div>
 
