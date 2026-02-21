@@ -338,7 +338,7 @@ export default function CasinoPage() {
                 className="border-border text-muted-foreground hover:text-loss hover:border-loss/30 hover:bg-loss/5"
               >
                 <RotateCcw className="size-4" />
-                Reset (Local)
+                Reset Table
               </Button>
             </div>
           )}
